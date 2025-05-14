@@ -2,7 +2,6 @@ package com.bars.exchange.tracker.domain.usecase
 
 import com.bars.exchange.tracker.domain.model.Asset
 import com.bars.exchange.tracker.domain.repository.IAssetRepository
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /**
@@ -14,10 +13,9 @@ class GetAvailableAssetsUseCase @Inject constructor(
     /**
      * Executes the use case to fetch available assets.
      *
-     * @return A Flow emitting a Result containing a list of Assets on success, or an error on failure.
-     *         We use Flow<Result<List<Asset>>> to handle loading/success/error states reactively.
+     * @return A Result containing a list of Assets on success, or an error on failure.
      */
-    operator fun invoke(): Flow<Result<List<Asset>>> {
+    suspend operator fun invoke(): Result<List<Asset>> {
         return assetRepository.getAvailableAssets()
     }
 }

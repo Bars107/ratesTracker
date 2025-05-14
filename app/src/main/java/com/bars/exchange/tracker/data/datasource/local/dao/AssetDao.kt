@@ -29,6 +29,14 @@ interface AssetDao {
     fun getAllAssets(): Flow<List<AssetEntity>>
 
     /**
+     * Retrieves all assets from the database, ordered by symbol.
+     * Suspend function version for one-time queries.
+     * @return A list of AssetEntity.
+     */
+    @Query("SELECT * FROM assets ORDER BY symbol ASC")
+    suspend fun getAllAssetsSuspend(): List<AssetEntity>
+
+    /**
      * Retrieves a single asset by its symbol.
      * @param symbol The symbol of the asset to retrieve.
      * @return A Flow emitting the AssetEntity or null if not found.

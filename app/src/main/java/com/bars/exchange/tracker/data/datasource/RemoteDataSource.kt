@@ -1,16 +1,19 @@
 package com.bars.exchange.tracker.data.datasource
 
-import com.bars.exchange.tracker.data.datasource.dto.ExchangeInfoResponse // Added
+import com.bars.exchange.tracker.data.datasource.dto.ExchangeInfoResponse
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body // Added
-import io.ktor.client.request.get // Added
+import io.ktor.client.call.body
+import io.ktor.client.request.get
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 
 /**
  * Remote data source implementation for fetching data from the Binance API.
  *
- * TODO: Inject proper HTTP client (e.g., Ktor, Retrofit) and WebSocket client.
+ * Uses Ktor HTTP client for API requests. WebSocket implementation for real-time
+ * ticker updates will be added in the future.
  */
 class RemoteDataSource(private val httpClient: HttpClient) : IDataSource { // Implements IDataSource
 
@@ -21,17 +24,17 @@ class RemoteDataSource(private val httpClient: HttpClient) : IDataSource { // Im
     private val binanceWebSocketBaseUrl = "wss://stream.binance.com:9443"
 
     // --- Asset Information ---
-    override fun getAvailableAssets(): Flow<Result<List<AssetInfo>>> = flow {
+    override suspend fun getAvailableAssets(): Result<List<AssetInfo>> = withContext(Dispatchers.IO) {
         try {
             // Make the GET request to the /exchangeInfo endpoint
             val response = httpClient.get(binanceApiBaseUrl + "exchangeInfo") {
                 // Configure request parameters if needed (e.g., headers)
             }
             val exchangeInfo = response.body<ExchangeInfoResponse>()
-            emit(Result.success(exchangeInfo.symbols))
+            Result.success(exchangeInfo.symbols)
         } catch (e: Exception) {
             println("RemoteDataSource: Error fetching available assets: ${e.message}")
-            emit(Result.failure(e))
+            Result.failure(e)
         }
     }
 

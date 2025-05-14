@@ -48,6 +48,7 @@ android {
 dependencies {
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
 
     // Room Database
@@ -62,7 +63,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json) // Kotlinx.serialization for JSON
     implementation(libs.ktor.client.logging) // For logging
     implementation(libs.ktor.client.websockets) // For WebSockets
-    implementation(libs.logback.classic) // SLF4J implementation for Ktor logging
+    implementation(libs.slf4j.simple) // Simple logging implementation for Android
     implementation(libs.navigation.compose)
 
     implementation(libs.androidx.core.ktx)

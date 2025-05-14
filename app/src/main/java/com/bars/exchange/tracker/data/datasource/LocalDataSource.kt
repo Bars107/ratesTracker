@@ -18,8 +18,9 @@ class LocalDataSource @Inject constructor(
 ) : IDataSource { // Implements IDataSource
 
     // --- Asset Information --- 
-    override fun getAvailableAssets(): Flow<Result<List<AssetInfo>>> {
-        return assetDao.getAllAssets().map { entityList ->
+    override suspend fun getAvailableAssets(): Result<List<AssetInfo>> {
+        return try {
+            val entityList = assetDao.getAllAssetsSuspend()
             val infoList = entityList.map {
                 // Map AssetEntity to AssetInfo
                 AssetInfo(
@@ -31,6 +32,8 @@ class LocalDataSource @Inject constructor(
                 )
             }
             Result.success(infoList) // Wrap in Result
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 

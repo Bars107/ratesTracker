@@ -15,10 +15,10 @@ interface IDataSource {
 
     /**
      * Fetches the list of available trading symbols/assets.
-     * - RemoteDataSource: Fetches from API and returns as a single Result inside a Flow.
-     * - LocalDataSource: Fetches from DB, maps to AssetInfo, and returns as Flow<Result<List<AssetInfo>>>.
+     * - RemoteDataSource: Fetches from API and returns as a Result.
+     * - LocalDataSource: Fetches from DB, maps to AssetInfo, and returns as Result<List<AssetInfo>>.
      */
-    fun getAvailableAssets(): Flow<Result<List<AssetInfo>>>
+    suspend fun getAvailableAssets(): Result<List<AssetInfo>>
 
     // --- Caching/Local Storage Operations (primarily for LocalDataSource) ---
 

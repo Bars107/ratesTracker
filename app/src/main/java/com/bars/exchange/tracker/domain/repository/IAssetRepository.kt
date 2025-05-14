@@ -12,9 +12,9 @@ interface IAssetRepository {
 
     /**
      * Gets the list of available trading assets.
-     * Returns a Flow that emits a Result, useful for observing loading/success/error states.
+     * Returns a Result containing either the list of assets or an error.
      */
-    fun getAvailableAssets(): Flow<Result<List<Asset>>>
+    suspend fun getAvailableAssets(): Result<List<Asset>>
 
     /**
      * Subscribes to real-time ticker updates for a list of symbols.

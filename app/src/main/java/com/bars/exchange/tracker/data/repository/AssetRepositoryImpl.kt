@@ -6,10 +6,9 @@ import com.bars.exchange.tracker.di.LocalDataSourceAnnotation
 import com.bars.exchange.tracker.di.RemoteDataSourceAnnotation
 import com.bars.exchange.tracker.domain.model.Asset
 import com.bars.exchange.tracker.domain.repository.IAssetRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -21,35 +20,53 @@ class AssetRepositoryImpl @Inject constructor(
     @LocalDataSourceAnnotation private val localDataSource: IDataSource
 ) : IAssetRepository {
 
-    override fun getAvailableAssets(): Flow<Result<List<Asset>>> = flow {
-        // Attempt to fetch from remote and update local cache.
-        // This runs when the flow is first collected.
+    override suspend fun getAvailableAssets(): Result<List<Asset>> = withContext(Dispatchers.IO) {
+        // Simple approach: try remote first, then fallback to local if needed
+        println("AssetRepository: Attempting to fetch from remote data source...")
+        
         try {
-            println("AssetRepository: Attempting to fetch from remote data source...")
-            remoteDataSource.getAvailableAssets().firstOrNull()?.let { remoteResult -> // Collect first emission
-                remoteResult.fold(
-                    onSuccess = { assetInfoList ->
-                        println("AssetRepository: Successfully fetched from remote. Updating local cache...")
+            // Get remote data first
+            val remoteResult = remoteDataSource.getAvailableAssets()
+            
+            if (remoteResult.isSuccess) {
+                // Remote fetch succeeded
+                val assetInfoList = remoteResult.getOrNull()!!
+                println("AssetRepository: Successfully fetched from remote. Updating local cache...")
+                
+                // Update local cache in a separate IO context to avoid blocking
+                withContext(Dispatchers.IO) {
+                    try {
                         localDataSource.clearAllAssets()
                         localDataSource.saveAssets(assetInfoList)
                         println("AssetRepository: Local cache updated.")
-                    },
-                    onFailure = { exception ->
-                        println("AssetRepository: Failed to fetch from remote: ${exception.message}. Will serve from local cache.")
-                        // Optionally, re-throw or handle if local cache is empty and this is critical
+                    } catch (e: Exception) {
+                        println("AssetRepository: Error updating local cache: ${e.message}")
                     }
-                )
-            }
-        } catch (e: Exception) {
-            println("AssetRepository: Exception during remote fetch or local save: ${e.message}")
-            // Local data will still be served by the flow below
-        }
-
-        // Emit the flow from the local data source (single source of truth)
-        println("AssetRepository: Collecting from local data source...")
-        localDataSource.getAvailableAssets().collect { localResult ->
-            localResult.fold(
-                onSuccess = { assetInfoList ->
+                }
+                
+                // Map to domain model and return
+                val domainAssets = assetInfoList.map {
+                    Asset(
+                        symbol = it.symbol,
+                        baseAsset = it.baseAsset,
+                        quoteAsset = it.quoteAsset,
+                        status = it.status
+                    )
+                }
+                return@withContext Result.success(domainAssets)
+            } else {
+                // Remote fetch failed, try local cache
+                println("AssetRepository: Remote fetch failed. Falling back to local cache...")
+                val localResult = withContext(Dispatchers.IO) {
+                    localDataSource.getAvailableAssets()
+                }
+                
+                if (localResult.isSuccess) {
+                    // Local fetch succeeded
+                    val assetInfoList = localResult.getOrNull()!!
+                    println("AssetRepository: Successfully fetched from local cache.")
+                    
+                    // Map to domain model and return
                     val domainAssets = assetInfoList.map {
                         Asset(
                             symbol = it.symbol,
@@ -58,14 +75,17 @@ class AssetRepositoryImpl @Inject constructor(
                             status = it.status
                         )
                     }
-                    // println("AssetRepository: Emitting ${domainAssets.size} assets from local data source.")
-                    emit(Result.success(domainAssets))
-                },
-                onFailure = { exception ->
-                    println("AssetRepository: Error fetching from local data source: ${exception.message}")
-                    emit(Result.failure(exception))
+                    return@withContext Result.success(domainAssets)
+                } else {
+                    // Both remote and local failed
+                    val error = localResult.exceptionOrNull() ?: Exception("Unknown error")
+                    println("AssetRepository: Local fetch failed: ${error.message}")
+                    Result.failure(error)
                 }
-            )
+            }
+        } catch (e: Exception) {
+            println("AssetRepository: Error fetching assets: ${e.message}")
+            Result.failure(e)
         }
     }
 

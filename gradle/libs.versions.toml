@@ -16,6 +16,7 @@ room = "2.7.1"
 ksp = "2.1.20-2.0.1" # Example KSP version, align with your Kotlin version
 navigationCompose = "2.9.0" # Or latest stable
 accompanist = "0.32.0" # Latest stable version
+slf4jSimple = "2.0.9"
 
 
 [libraries]
@@ -38,6 +39,7 @@ navigation-compose = { group = "androidx.navigation", name = "navigation-compose
 # Hilt
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.1.0" }
 
 # Ktor
 ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
@@ -56,6 +58,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 
 # Accompanist
 accompanist-systemuicontroller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4jSimple" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
