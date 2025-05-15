@@ -29,8 +29,10 @@ sealed interface AssetsEvent {
     data object LoadAssets : AssetsEvent
     data object LoadMoreAssets : AssetsEvent
     data class ToggleAssetSelection(val asset: Asset) : AssetsEvent
+    data class RemoveAsset(val asset: Asset) : AssetsEvent
     data object SaveSelectedAssets : AssetsEvent
     data object ClearSelection : AssetsEvent
+    data object SyncSelectedAssets : AssetsEvent
 }
 
 // Side effects that need to be handled

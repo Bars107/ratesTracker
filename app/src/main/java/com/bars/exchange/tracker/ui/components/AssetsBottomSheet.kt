@@ -1,5 +1,6 @@
 package com.bars.exchange.tracker.ui.components
 
+import android.util.Log
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -21,22 +23,28 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.bars.exchange.tracker.ui.main.mvi.Asset
 import com.bars.exchange.tracker.ui.main.mvi.AssetsEvent
 import com.bars.exchange.tracker.ui.main.mvi.AssetsState
 import com.bars.exchange.tracker.ui.theme.TrackerApplicationTheme
+
+
+private const val TAG = "AssetsBottomSheet"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,22 +52,62 @@ fun AssetsBottomSheet(
     state: AssetsState,
     onEvent: (AssetsEvent) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
+    // Create a local copy of the selected assets to track changes within the bottom sheet
+    // This allows us to discard changes if the user closes without saving
+    // Using SnapshotStateList which will properly trigger recomposition when modified
+    val localSelectedAssets: SnapshotStateList<Asset> = remember { mutableStateListOf() }
+    
+    // Update local selection when the state's selected assets change (initial load)
+    LaunchedEffect(state.selectedAssets) {
+        localSelectedAssets.clear()
+        localSelectedAssets.addAll(state.selectedAssets)
+    }
+    
+    // Function to handle local asset selection toggle
+    val toggleAssetSelection = { asset: Asset ->
+        val existingIndex = localSelectedAssets.indexOfFirst { it.id == asset.id }
+        
+        if (existingIndex >= 0) {
+            // Asset is already selected, remove it
+            localSelectedAssets.removeAt(existingIndex)
+        } else {
+            // Asset is not selected, add it
+            localSelectedAssets.add(asset.copy(isSelected = true))
+        }
+    }
+    
+    // Load assets when the sheet is opened, clear search, and sync selected assets
     LaunchedEffect(Unit) {
+        // Clear any existing search query
+        onEvent(AssetsEvent.SearchQueryChanged(""))
+        // Sync selected assets to ensure proper selection state
+        onEvent(AssetsEvent.SyncSelectedAssets)
+        // Load assets
         onEvent(AssetsEvent.LoadAssets)
     }
 
-    // Create a sheet state that disables gesture-based dismissal
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { false } // Prevents dismissal by gesture
-    )
+    // Intercept back press to prevent unexpected dismissal
+    androidx.activity.compose.BackHandler(enabled = true) {
+        // Only handle back press explicitly through our dismiss handler
+        onDismiss()
+    }
 
-    ModalBottomSheet(
+    // Custom bottom sheet dialog implementation
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
     ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -75,7 +123,12 @@ fun AssetsBottomSheet(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { onEvent(AssetsEvent.ClearSelection) }) {
+                    IconButton(
+                        onClick = {
+                            // Just dismiss without saving changes
+                            onDismiss()
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close"
@@ -84,11 +137,21 @@ fun AssetsBottomSheet(
                 },
                 actions = {
                     IconButton(
-                        onClick = { 
-                            println("AssetsBottomSheet: Done button clicked, saving ${state.selectedAssets.size} selected assets")
-                            state.selectedAssets.forEach { asset ->
-                                println("AssetsBottomSheet: Selected asset to save: ${asset.symbol} (${asset.id}), isSelected=${asset.isSelected}")
+                        onClick = {
+                            // First, update the ViewModel with our local selection
+                            Log.d(TAG, "Done button clicked, saving ${localSelectedAssets.size} selected assets")
+                            
+                            // Update the ViewModel's state with our local selection
+                            // First, clear existing selection
+                            onEvent(AssetsEvent.ClearSelection)
+                            
+                            // For each selected asset in our local state, toggle it in the ViewModel
+                            localSelectedAssets.forEach { asset ->
+                                Log.d(TAG, "Selected asset to save: ${asset.symbol} (${asset.id}), isSelected=${asset.isSelected}")
+                                onEvent(AssetsEvent.ToggleAssetSelection(asset))
                             }
+                            
+                            // Save the selected assets
                             onEvent(AssetsEvent.SaveSelectedAssets)
                         }
                     ) {
@@ -166,6 +229,11 @@ fun AssetsBottomSheet(
                 }
 
                 else -> {
+                    // Remember the LazyListState to maintain scroll position
+                    val listState = remember {
+                        androidx.compose.foundation.lazy.LazyListState()
+                    }
+
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -176,19 +244,22 @@ fun AssetsBottomSheet(
                         contentPadding = PaddingValues(bottom = 16.dp),
                         // Use default fling behavior for smooth scrolling
                         flingBehavior = ScrollableDefaults.flingBehavior(),
-                        // Use state restoration policy for better performance
-                        state = androidx.compose.foundation.lazy.LazyListState(
-                            firstVisibleItemIndex = 0,
-                            firstVisibleItemScrollOffset = 0
-                        )
+                        // Use remembered state to prevent issues with scrolling
+                        state = listState
                     ) {
                         items(
                             items = state.filteredAssets,
                             key = { it.id }, // Use stable keys for better performance
                         ) { asset ->
+                            // Check if this asset is in our local selection
+                            val isSelected = localSelectedAssets.any { it.id == asset.id }
+                            
+                            // Create a copy of the asset with the correct selection state
+                            val assetWithLocalSelection = asset.copy(isSelected = isSelected)
+                            
                             AssetItem(
-                                asset = asset,
-                                onClick = { onEvent(AssetsEvent.ToggleAssetSelection(asset)) }
+                                asset = assetWithLocalSelection,
+                                onClick = { toggleAssetSelection(asset) }
                             )
                         }
 
@@ -219,10 +290,10 @@ fun AssetsBottomSheet(
                 }
             }
         }
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @ThemePreviews
 private fun AssetsBottomSheetPreview() {

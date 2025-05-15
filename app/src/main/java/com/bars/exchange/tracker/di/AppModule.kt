@@ -6,6 +6,8 @@ import com.bars.exchange.tracker.data.datasource.LocalDataSource // Added
 import com.bars.exchange.tracker.data.datasource.RemoteDataSource
 import com.bars.exchange.tracker.data.datasource.local.AppDatabase // Added
 import com.bars.exchange.tracker.data.datasource.local.dao.AssetDao // Added
+import com.bars.exchange.tracker.data.datasource.local.dao.SelectedAssetDao
+import com.bars.exchange.tracker.data.datasource.local.dao.TickerUpdateDao
 import com.bars.exchange.tracker.data.repository.AssetRepositoryImpl
 import com.bars.exchange.tracker.domain.repository.IAssetRepository
 import dagger.Module
@@ -39,13 +41,25 @@ object AppModule {
     fun provideAssetDao(appDatabase: AppDatabase): AssetDao {
         return appDatabase.assetDao()
     }
+    
+    @Provides
+    @Singleton
+    fun provideSelectedAssetDao(appDatabase: AppDatabase): SelectedAssetDao {
+        return appDatabase.selectedAssetDao()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTickerUpdateDao(appDatabase: AppDatabase): TickerUpdateDao {
+        return appDatabase.tickerUpdateDao()
+    }
 
     // --- DataSource Providers (Qualified) ---
     @Provides
     @Singleton
     @LocalDataSourceAnnotation // Qualifier
-    fun provideLocalDataSource(assetDao: AssetDao): IDataSource { // Returns IDataSource
-        return LocalDataSource(assetDao)
+    fun provideLocalDataSource(assetDao: AssetDao, selectedAssetDao: SelectedAssetDao, tickerUpdateDao: TickerUpdateDao): IDataSource { // Returns IDataSource
+        return LocalDataSource(assetDao, selectedAssetDao, tickerUpdateDao)
     }
 
     @Provides
@@ -106,11 +120,7 @@ object AppModule {
         }
     }
 
-    // TODO: Add @Provides methods for HttpClient and WebSocketClient later
-    // @Provides
-    // @Singleton
-    // fun provideHttpClient(): YourHttpClient { /* ... setup Ktor client ... */ }
-
+    // TODO: Add @Provides methods for WebSocketClient later
     // @Provides
     // @Singleton
     // fun provideWebSocketClient(): YourWebSocketClient { /* ... setup Ktor WebSocket client ... */ }

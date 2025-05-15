@@ -60,11 +60,3 @@ interface IDataSource {
      */
     fun stopAllTickerUpdates()
 }
-
-// Define a simple data class for real-time ticker data (can be moved to its own file)
-data class TickerData(
-    val symbol: String,
-    val lastPrice: String,
-    val priceChangePercent: String // 24hr percentage change
-    // Add other relevant fields from Binance's ticker stream as needed
-)

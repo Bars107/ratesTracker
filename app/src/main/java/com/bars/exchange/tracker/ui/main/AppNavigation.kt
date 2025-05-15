@@ -1,5 +1,6 @@
 package com.bars.exchange.tracker.ui.main
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -15,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,11 +36,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.bars.exchange.tracker.ui.components.AssetsBottomSheet
 import com.bars.exchange.tracker.ui.main.mvi.AssetsEffect
-import kotlinx.coroutines.flow.collectLatest
+import com.bars.exchange.tracker.ui.main.mvi.MainViewModel
 import com.bars.exchange.tracker.ui.main.screens.FavoriteScreen
 import com.bars.exchange.tracker.ui.main.screens.HomeScreen
 import com.bars.exchange.tracker.ui.main.screens.MarketsScreen
 import com.bars.exchange.tracker.ui.main.screens.SettingsScreen
+import kotlinx.coroutines.flow.collectLatest
 
 // List of bottom navigation items
 val bottomNavItems = listOf(
@@ -102,6 +103,8 @@ private fun AnimatedContentTransitionScope<NavBackStackEntry>.defaultPopExit(
     }
 }
 
+private const val TAG = "AppNavigation"
+
 @Composable
 fun MainAppScreen(modifier: Modifier = Modifier) {
     val navController: NavHostController = rememberNavController()
@@ -112,24 +115,24 @@ fun MainAppScreen(modifier: Modifier = Modifier) {
     // Handle effects from ViewModel
     LaunchedEffect(Unit) {
         viewModel.effect.collectLatest { effect ->
-            println("AppNavigation: Received effect: $effect")
+            Log.d(TAG,"Received effect: $effect")
             when (effect) {
                 is AssetsEffect.AssetSelectionUpdated -> {
-                    println("AppNavigation: Asset selection updated with ${effect.selectedAssets.size} assets")
+                    Log.d(TAG,"Asset selection updated with ${effect.selectedAssets.size} assets")
                     // Handle asset selection updates
                     // No need to close the bottom sheet here
                 }
                 AssetsEffect.CloseBottomSheet -> {
-                    println("AppNavigation: Closing bottom sheet without saving")
+                    Log.d(TAG,"Closing bottom sheet without saving")
                     showAssetsBottomSheet = false
                 }
                 AssetsEffect.SaveAndCloseBottomSheet -> {
-                    println("AppNavigation: Saving assets and closing bottom sheet")
+                    Log.d(TAG,"Saving assets and closing bottom sheet")
                     // Save selected assets and close the bottom sheet
                     showAssetsBottomSheet = false
                 }
-                else -> { 
-                    println("AppNavigation: Unhandled effect: $effect")
+                else -> {
+                    Log.w(TAG,"Unhandled effect: $effect")
                     /* Other effects handled by screens */ 
                 }
             }
@@ -149,7 +152,8 @@ fun MainAppScreen(modifier: Modifier = Modifier) {
             AppNavHost(
                 navController = navController,
                 modifier = Modifier.padding(innerPadding),
-                onOpenAssetsBottomSheet = { showAssetsBottomSheet = true }
+                onOpenAssetsBottomSheet = { showAssetsBottomSheet = true },
+                viewModel = viewModel
             )
             
             // Show bottom sheet when requested
@@ -168,7 +172,8 @@ fun MainAppScreen(modifier: Modifier = Modifier) {
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    onOpenAssetsBottomSheet: () -> Unit = {}
+    onOpenAssetsBottomSheet: () -> Unit = {},
+    viewModel: MainViewModel
 ) {
     NavHost(
         navController = navController,
@@ -187,7 +192,10 @@ fun AppNavHost(
             popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Right, animationSpec) },
             popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Left, animationSpec) }
         ) {
-            HomeScreen(onOpenAssetsBottomSheet = onOpenAssetsBottomSheet)
+            HomeScreen(
+                onOpenAssetsBottomSheet = onOpenAssetsBottomSheet,
+                viewModel = viewModel
+            )
         }
 
         composable(
