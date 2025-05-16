@@ -38,18 +38,6 @@ The application follows Clean Architecture principles with an MVI (Model-View-In
 2. Open the project in Android Studio
 3. Build and run the application on an emulator or physical device
 
-## Testing
-
-The application includes unit tests for:
-- ViewModel logic
-- Repository implementations
-- UI component actions
-
-Run tests using:
-```bash
-./gradlew test
-```
-
 ## Future Enhancements
 
 - Support for additional exchanges
