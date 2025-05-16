@@ -76,6 +76,13 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.accompanist.systemuicontroller)
     testImplementation(libs.junit)
+    
+    // MockK for mocking in tests
+    testImplementation(libs.mockk)
+    
+    // Coroutines test
+    testImplementation(libs.kotlinx.coroutines.test)
+    
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
